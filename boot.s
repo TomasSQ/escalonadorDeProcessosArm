@@ -85,7 +85,7 @@ RESET_HANDLER:
 	ldr		r0, [r0]
 	
 											@ Entra em modo de usuário com interrupções habilitadas
-	msr		CPSR_c, #0xD0
+	msr		CPSR_c, #0x10
 	
 	mov		PC, r0
 
