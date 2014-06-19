@@ -1,7 +1,7 @@
 		.org 0x0
 .section .iv,"a"
 
-_start:		
+_start:
 
 interrupt_vector:
 	b	RESET_HANDLER
@@ -14,10 +14,10 @@ SET_TZIC:
 @ Constantes para os enderecos do TZIC
 	.set TZIC_BASE,			0x0FFFC000
 	.set TZIC_INTCTRL,		0x0
-	.set TZIC_INTSEC1,		0x84 
+	.set TZIC_INTSEC1,		0x84
 	.set TZIC_ENSET1,		0x104
 	.set TZIC_PRIOMASK,		0xC
- 	.set TZIC_PRIORITY9,	0x424
+	.set TZIC_PRIORITY9,	0x424
 
 SET_GPT:
 @Constantes para os enderecos do GPT
@@ -83,10 +83,6 @@ RESET_HANDLER:
 
 											@instrucao msr - habilita interrupcoes
 	msr		CPSR_c, #0x13					@ SUPERVISOR mode, IRQ/FIQ enabled
-
-	ldr		r0, =CONTADOR
-	mov		r1, #0
-	str		r1, [r0]
 	
 	ldr		r0, =USER_TEXT
 	ldr		r0, [r0]
@@ -96,6 +92,19 @@ RESET_HANDLER:
 	mov		PC, r0
 
 SVC_HANDLER:
+	cmp r7, #1
+	beq SYSCALL_EXIT
+
+	cmp r7, #2
+	beq SYSCALL_FORK
+
+	cmp r7, #4
+	beq SYSCALL_WRITE
+
+	cmp r7, #20
+	beq SYSCALL_GETPID
+
+SVC_END:
 	movs pc, lr
 
 IRQ_HANDLER:
@@ -103,14 +112,24 @@ IRQ_HANDLER:
 	mov		r1, #1
 	str		r1, [r0, #GPT_SR]
 
-	ldr		r0, =CONTADOR					@ incrementa contador
-	ldr		r1, [r0]
-	add		r1, r1, #1
-	str		r1, [r0]
-
 	sub		lr, lr, #4						@ retorna
 	movs	pc, lr
 
+SYSCALL_EXIT:
+	b	SVC_END
+
+SYSCALL_FORK:
+	b	SVC_END
+
+SYSCALL_WRITE:
+	b	SVC_END
+
+SYSCALL_GETPID:
+	ldr	r0, =RUNNING_PID
+	ldr	r0, [r0]
+
+	b	SVC_END
+
 .data
-CONTADOR:	.word		0
-USER_TEXT:	.word	0x77802000
+USER_TEXT:		.word	0x77802000
+RUNNING_PID:	.word	0
