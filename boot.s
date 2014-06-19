@@ -123,7 +123,6 @@ RESET_HANDLER:
 	ldr		r0, [r0]
 											@ Entra em modo de usuário com interrupções habilitadas
 	msr		CPSR_c, #0x10
-
 	mov		PC, r0
 
 SVC_HANDLER:
@@ -141,7 +140,6 @@ SVC_HANDLER:
 
 SVC_END:
 	msr		CPSR_c, #0x10						@ retorna ao modo de usuario, e retorna
-@	sub		lr, lr, #4
 	mov		pc, lr
 
 IRQ_HANDLER:
