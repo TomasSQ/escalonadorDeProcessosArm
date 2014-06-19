@@ -1,3 +1,4 @@
 _start:
-        b main
+		bl getpid
+        b _start
         
