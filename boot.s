@@ -60,7 +60,6 @@ RESET_HANDLER:
 
 											@ Habilita interrupcao 39 (GPT)
 											@ reg1 bit 7 (gpt)
-
 	mov		r0, #(1 << 7)
 	str		r0, [r1, #TZIC_ENSET1]
 
@@ -80,14 +79,13 @@ RESET_HANDLER:
 											@ Habilita o controlador de interrupcoes
 	mov		r0, #1
 	str		r0, [r1, #TZIC_INTCTRL]
-
-											@instrucao msr - habilita interrupcoes
-	msr		CPSR_c, #0x13					@ SUPERVISOR mode, IRQ/FIQ enabled
 	
+											@ Carrega endereço do início do programa de usuário
 	ldr		r0, =USER_TEXT
 	ldr		r0, [r0]
 	
-	msr		CPSR_c, #0x10
+											@ Entra em modo de usuário com interrupções habilitadas
+	msr		CPSR_c, #0xD0
 	
 	mov		PC, r0
 
