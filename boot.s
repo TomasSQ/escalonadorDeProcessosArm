@@ -1,4 +1,4 @@
-.org 0x0
+		.org 0x0
 .section .iv,"a"
 
 _start:		
@@ -6,7 +6,7 @@ _start:
 interrupt_vector:
 	b	RESET_HANDLER
 .org 0x8
-	b	IRQ_HANDLER
+	b	SVC_HANDLER
 .org 0x18
 	b	IRQ_HANDLER
 
@@ -27,16 +27,6 @@ SET_GPT:
 	.set GPT_SR,			0x0008
 	.set GPT_OCR1,			0x0010
 	.set GPT_IR,			0x000C
-
-.set ENTRADA_CODIGO_USUARIO,	0x77802000
-
-@ stacks de cada modo
-.set SVC_STACK, 0x77701000
-.set UND_STACK, 0x77702000
-.set ABT_STACK, 0x77703000
-.set IRQ_STACK, 0x77704000
-.set FIQ_STACK, 0x77705000
-.set USR_STACK, 0x77706000
 
 .org 0x100
 .text
@@ -91,35 +81,36 @@ RESET_HANDLER:
 	mov		r0, #1
 	str		r0, [r1, #TZIC_INTCTRL]
 
-	@Configure stacks for all modes
-	ldr		sp, =SVC_STACK
-	msr		CPSR_c, #0xDF  @ Enter system mode, FIQ/IRQ disabled
-	ldr		sp, =USR_STACK
-	msr		CPSR_c, #0xD1  @ Enter FIQ mode, FIQ/IRQ disabled
-	ldr		sp, =FIQ_STACK
-	msr		CPSR_c, #0xD2  @ Enter IRQ mode, FIQ/IRQ disabled
-	ldr		sp, =IRQ_STACK
-	msr		CPSR_c, #0xD7  @ Enter abort mode, FIQ/IRQ disabled
-	ldr		sp, =ABT_STACK
-	msr		CPSR_c, #0xDB  @ Enter undefined mode, FIQ/IRQ disabled
-	ldr		sp, =UND_STACK
-
 											@instrucao msr - habilita interrupcoes
-	msr		CPSR_c, #0x10					@ USER mode, IRQ/FIQ disabled
+	msr		CPSR_c, #0x13					@ SUPERVISOR mode, IRQ/FIQ enabled
 
-	ldr		r0, =ENTRADA_CODIGO_USUARIO
-	movs	pc, r0
+	ldr		r0, =CONTADOR
+	mov		r1, #0
+	str		r1, [r0]
+	
+	ldr		r0, =USER_TEXT
+	ldr		r0, [r0]
+	
+	msr		CPSR_c, #0x10
+	
+	mov		PC, r0
+
+SVC_HANDLER:
+	movs pc, lr
 
 IRQ_HANDLER:
 	ldr		r0, =GPT_BASE					@ zera flag, para nao tratar esta interrupcao novamente
 	mov		r1, #1
 	str		r1, [r0, #GPT_SR]
 
+	ldr		r0, =CONTADOR					@ incrementa contador
+	ldr		r1, [r0]
+	add		r1, r1, #1
+	str		r1, [r0]
+
 	sub		lr, lr, #4						@ retorna
 	movs	pc, lr
 
-SVC_HANDLER:
-	msr		CPSR_c, #0x1F
-	sub		lr, lr, #4						@ retorna
-	movs	pc, lr
-
+.data
+CONTADOR:	.word		0
+USER_TEXT:	.word	0x77802000
