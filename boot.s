@@ -44,7 +44,7 @@ SET_UART:
 	.set UART_UCR3,			0x0088						@ 0x53FBC088
 	.set UART_UCR4,			0x008C						@ 0x53FBC08C
 	.set UART_UFCR,			0x0090						@ 0x53FBC090
-	.set UART_USR1,			0x0094						@ 0x53FBC094					
+	.set UART_USR1,			0x0094						@ 0x53FBC094
 	.set UART_UBIR,			0x00A4						@ 0x53FBC0A4
 	.set UART_UBMR,			0x00A8						@ 0x53FBC0A8
 
@@ -111,24 +111,24 @@ RESET_HANDLER:
 	mov		r0, #1
 	str		r0, [r1, #TZIC_INTCTRL]
 
-	ldr             r0, =UART_BASE
+	ldr		r0, =UART_BASE
 
-        mov             r1, #0x1
-        str             r1, [r0, #UART_UCR1]
+	mov		r1, #0x1
+	str		r1, [r0, #UART_UCR1]
 
-        mov             r1, #0x21
+	mov		r1, #0x21
 	mov		r1, r1, lsl #8
 	add		r1, r1, #0x27
-        str             r1, [r0, #UART_UCR2]
+	str		r1, [r0, #UART_UCR2]
 
-        mov             r1, #0x7
+	mov		r1, #0x7
 	mov		r1, r1, lsl #8
 	add		r1, r1, #0x04
-        str             r1, [r0, #UART_UCR3]
+	str		r1, [r0, #UART_UCR3]
 
-        mov             r1, #0x7C
+	mov		r1, #0x7C
 	mov		r1, r1, lsl #8
-        str             r1, [r0, #UART_UCR4]
+	str		r1, [r0, #UART_UCR4]
 
 	mov		r1, #0x8
 	mov		r1, r1, lsl #8
@@ -189,16 +189,16 @@ SYSCALL_WRITE:
 	push		{r4}
 	WRITE:
 		WAIT_TO_WRITE:
-			ldr		r3, [r0, #UART_USR1]			@ se o 13o bit de USR1 for 0
-			mov		r4, #(1 << 13)				@ temos de esperar para escrever	
+			ldr		r3, [r0, #UART_USR1]		@ se o 13o bit de USR1 for 0
+			mov		r4, #(1 << 13)				@ temos de esperar para escrever
 			and		r4, r4, r3
 			cmp		r4, #0
 			beq		WAIT_TO_WRITE
-		sub		r2, r2, #1					@ podemos escrever, r2 tem quantos caracteres ainda restam a ser escrito
+		sub		r2, r2, #1						@ podemos escrever, r2 tem quantos caracteres ainda restam a ser escrito
 		ldr		r4, [r1], #1					@ r4 = r1[i++]
-		str		r4, [r0, #UART_UTXD]				@ escrevemos na fila a ser transmitida
-		cmp		r2, #0						@ se ainda tem caracteres a serem escritos
-		bne		WRITE						@ continuamos o loop
+		str		r4, [r0, #UART_UTXD]			@ escrevemos na fila a ser transmitida
+		cmp		r2, #0							@ se ainda tem caracteres a serem escritos
+		bne		WRITE							@ continuamos o loop
 	pop		{r4}
 	b		SVC_END
 
