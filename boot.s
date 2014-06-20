@@ -10,6 +10,14 @@ interrupt_vector:
 .org 0x18
 	b	IRQ_HANDLER
 
+@ Stacks
+	.set SVC_STACK, 0x77701000
+	.set UND_STACK, 0x77702000
+	.set ABT_STACK, 0x77703000
+	.set IRQ_STACK, 0x77704000
+	.set FIQ_STACK, 0x77705000
+	.set USR_STACK, 0x77706000
+
 SET_TZIC:
 @ Constantes para os enderecos do TZIC
 	.set TZIC_BASE,			0x0FFFC000
@@ -45,6 +53,25 @@ SET_UART:
 RESET_HANDLER:
 	ldr		r0, =interrupt_vector
 	mcr		p15, 0, r0, c12, c0, 0
+
+	ldr		sp, =SVC_STACK					@ Configura stack do supervisor
+
+	msr		CPSR_c, #0xDF					@ Entra em modo system, FIQ/IRQ desabilitados
+	ldr		sp, =USR_STACK
+
+	msr		CPSR_c, #0xD1					@ Entra em modo FIQ, FIQ/IRQ desabilitados
+	ldr		sp, =FIQ_STACK
+
+	msr		CPSR_c, #0xD2					@ Entra em modo IRQ, FIQ/IRQ desabilitados
+	ldr		sp, =IRQ_STACK
+
+	msr		CPSR_c, #0xD7					@ Entra em modo abort, FIQ/IRQ desabilitados
+	ldr		sp, =ABT_STACK
+
+	msr		CPSR_c, #0xDB					@ Entra em modo undefined, FIQ/IRQ desabilitados
+	ldr		sp, =UND_STACK
+
+	msr		CPSR_c, #0xD3					@ Volta ao modo supervisor, FIQ/IRQ desabilitados
 
 											@ Liga o GPT
 	ldr		r0, =GPT_BASE
