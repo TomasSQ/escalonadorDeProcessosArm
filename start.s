@@ -2,10 +2,11 @@
 .text
 _start:
 	mov		r0, #0
-	mov		r1, =bla
+	ldr		r1, =bla
 	mov		r2, #7
-	bl		write
+	bl		fork
+	#bl		write
 	b		_start
 
 .data
-bla:	.asciz "alows\n\0
+bla:	.asciz "alows\n\0"
