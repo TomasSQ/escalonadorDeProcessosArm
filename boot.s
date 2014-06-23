@@ -111,7 +111,7 @@ RESET_HANDLER:
 	mov		r0, #1
 	str		r0, [r1, #TZIC_INTCTRL]
 
-	ldr		r0, =UART_BASE
+	ldr		r0, =UART_BASE							@ configura o UART
 
 	mov		r1, #0x1
 	str		r1, [r0, #UART_UCR1]
@@ -150,7 +150,7 @@ RESET_HANDLER:
 	ldr		r0, [r0]
 											@ Entra em modo de usuário com interrupções habilitadas
 	msr		CPSR_c, #0x10
-	mov		PC, r0
+	mov		pc, r0
 
 SVC_HANDLER:
 	cmp		r7, #1
@@ -166,6 +166,7 @@ SVC_HANDLER:
 	beq		SYSCALL_GETPID
 
 SVC_END:
+	@ TODO acredito que isso nao funcionara em todos os casos
 	msr		CPSR_c, #0x10						@ retorna ao modo de usuario, e retorna
 	mov		pc, lr
 
@@ -211,3 +212,4 @@ SYSCALL_GETPID:
 .data
 USER_TEXT:		.word	0x77802000
 RUNNING_PID:	.word	0
+
