@@ -279,7 +279,31 @@ LOAD_CONTEXT:
 	pop		{ pc }								@ Retorna
 
 SYSCALL_EXIT:
+	push	{ lr }								@ Guardamos lr na stack (mesmo que o usemos)
+	ldr		r0, =RUNNING_PROCESS
+	ldr		r0, [r0]
+	sub		r2, r0, #1
+	mov		r1, #72
+	mul		r1, r2, r1
+	ldr		r2, =PROCESS_CONTEXTS				@ Encontra endereço do contexto do processo atual
+	add		r2, r2, r1
+
+	mov		r1, #1
+	str		r1, [r2]
+
+	bl		FIND_NEXT_READY_CONTEXT
+
+	pop		{ lr }
+
+	cmp		r0, #0
+	blne	LOAD_CONTEXT
+
+	beq		SYSCALL_EXIT_WAIT
+
 	b		SVC_END
+
+SYSCALL_EXIT_WAIT:
+	b	SYSCALL_EXIT_WAIT
 
 @ TODO: Implementação atual utilizada para testes apenas
 SYSCALL_FORK:
@@ -318,11 +342,61 @@ SYSCALL_GETPID:
 
 	b		SVC_END
 
+FIND_EMPTY_CONTEXT:
+	push	{ r1, r2, r3, lr }
+	ldr		r0, =PROCESS_CONTEXTS
+	ldr		r2, =PROCESS_8
+	mov		r3, #1
+	FIND_EMPTY_CHECK_CONTEXT:
+		ldr		r1, [r0]
+		cmp		r1, #0
+		beq		FIND_EMPTY_CONTEXT_END
+		cmp		r0, r2
+		moveq	r3, #0
+		beq		FIND_EMPTY_CONTEXT_END
+		add		r0, r0, #72
+		add		r3, r3, #1
+		b		FIND_EMPTY_CHECK_CONTEXT
+FIND_EMPTY_CONTEXT_END:
+	mov		r0, r3
+	pop		{ r1, r2, r3, pc }
+
+FIND_NEXT_READY_CONTEXT:
+	push	{ r1, r2, r3, r4, lr }
+	ldr		r0, =RUNNING_PROCESS				@ Carrega número do processo em execução
+	ldr		r3, [r0]
+	sub		r0, r3, #1
+	mov		r1, #72
+	mul		r1, r0, r1
+
+	ldr		r0, =PROCESS_CONTEXTS				@ Encontra endereço do contexto do processo atual
+	add		r0, r0, r1
+	mov		r4, r0
+	add		r0, r0, #72
+
+	ldr		r2, =PROCESS_8
+	FIND_NEXT_CHECK_CONTEXT:
+		ldr		r1, [r0]
+		cmp		r0, r4
+		moveq	r3, #0
+		beq		FIND_NEXT_READY_CONTEXT_END
+		cmp		r1, #0
+		bne		FIND_NEXT_READY_CONTEXT_END
+		cmp		r0, r2
+		ldreq	r0, =PROCESS_CONTEXTS
+		addne	r0, r0, #72
+		moveq	r3, #1
+		addne	r3, r3, #1
+		b		FIND_NEXT_CHECK_CONTEXT
+FIND_NEXT_READY_CONTEXT_END:
+	mov		r0, r3
+	pop		{ r1, r2, r3, r4, pc }
+
 .data
-USER_TEXT:		.word	0x77802000
-RUNNING_PID:	.word	1
-RUNNING_PROCESS:.word	1
-NEXT_PID:		.word	1
+USER_TEXT:		.word	0x77802000				@ Início do programa de usuário
+RUNNING_PID:	.word	1						@ PID do processo em execução
+RUNNING_PROCESS:.word	1						@ Número do processo em execução (1-8)
+NEXT_PID:		.word	1						@ PID do próximo processo a ser iniciado
 
 @ Contexts
 @ Armazenamos 4 bytes para o pid, 52 bytes de r0-r12, 4 bytes do SP_usr,

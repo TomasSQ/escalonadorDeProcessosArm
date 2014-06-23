@@ -4,6 +4,7 @@ _start:
 	mov		r0, #0
 	ldr		r1, =bla
 	mov		r2, #7
+	#bl		exit
 	bl		fork
 	#bl		write
 	b		_start
