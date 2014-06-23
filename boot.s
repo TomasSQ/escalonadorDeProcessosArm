@@ -1,4 +1,4 @@
-		.org 0x0
+.org 0x0
 .section .iv,"a"
 
 _start:
@@ -111,7 +111,7 @@ RESET_HANDLER:
 	mov		r0, #1
 	str		r0, [r1, #TZIC_INTCTRL]
 
-	ldr		r0, =UART_BASE							@ configura o UART
+	ldr		r0, =UART_BASE						@ configura o UART
 
 	mov		r1, #0x1
 	str		r1, [r0, #UART_UCR1]
@@ -164,6 +164,14 @@ RESET_HANDLER:
 	msr		SPSR, #0x10
 	movs	pc, r0
 
+IRQ_HANDLER:
+	ldr		r0, =GPT_BASE						@ zera flag, para nao tratar esta interrupcao novamente
+	mov		r1, #1
+	str		r1, [r0, #GPT_SR]
+
+	sub		lr, lr, #4							@ retorna
+	movs	pc, lr
+
 SVC_HANDLER:
 	cmp		r7, #1
 	beq		SYSCALL_EXIT
@@ -180,17 +188,9 @@ SVC_HANDLER:
 SVC_END:
 	movs	pc, lr								@ retorna ao modo de usuario, e retorna
 
-IRQ_HANDLER:
-	ldr		r0, =GPT_BASE						@ zera flag, para nao tratar esta interrupcao novamente
-	mov		r1, #1
-	str		r1, [r0, #GPT_SR]
-
-	sub		lr, lr, #4							@ retorna
-	movs	pc, lr
-
 @ Salva o contexto do processo que está rodando atualmente.
 SAVE_CONTEXT:
-	push	{ r0, r1 }							@ Empilha r0 e r1, pois iremos sujá-los
+	push	{r0, r1}							@ Empilha r0 e r1, pois iremos sujá-los
 	ldr		r0, =RUNNING_PROCESS				@ Carrega número do processo em execução
 	ldr		r0, [r0]
 	sub		r0, r0, #1
@@ -207,7 +207,7 @@ SAVE_CONTEXT:
 	mrs		r1, SPSR							@ Salva SPSR_svc como cpsr para usr
 	str		r1, [r0, #4]
 
-	ldr		r1, [SP, #8]						@ Carrega lr_svc da stack e salva como pc no contexto
+	ldr		r1, [sp, #8]						@ Carrega lr_svc da stack e salva como pc no contexto
 	str		r1, [r0, #8]
 
 	msr		CPSR_c, #0xDF						@ Altera para modo system
@@ -229,16 +229,20 @@ SAVE_CONTEXT:
 	str		r3, [r0, #56]						@ Salva r3 no contexto
 	str		r2, [r0, #60]						@ Salva r2 no contexto
 
-	pop		{ r2, r3 }							@ Desempilha valores iniciais de r0 e r1 em r2 e r3
+	pop		{r2, r3}							@ Desempilha valores iniciais de r0 e r1 em r2 e r3
+	push	{r2, r3}
 
 	str		r3, [r0, #64]						@ Salva r3 como r1 no contexto
 	str		r2, [r0, #68]						@ Salva r2 como r0 no contexto
+
+	pop		{r0, r1}
 
 	mov		pc, lr								@ Retorna
 
 @ Carrega processo r0 para execução
 LOAD_CONTEXT:
-	push	{ lr }								@ Empilha lr para podermos retornar
+	push	{lr}								@ Empilha lr para podermos retornar
+
 	ldr		r1, =RUNNING_PROCESS				@ Grava número do processo como processo atual
 	str		r0, [r1]
 	sub		r0, r0, #1
@@ -276,10 +280,10 @@ LOAD_CONTEXT:
 	ldr		r1, [r0, #64]						@ Carrega r1 do contexto
 	ldr		r0, [r0, #68]						@ Carrega r0 do contexto
 
-	pop		{ pc }								@ Retorna
+	pop		{pc}								@ Retorna
 
 SYSCALL_EXIT:
-	push	{ lr }								@ Guardamos lr na stack (mesmo que o usemos)
+	push	{lr}								@ Guardamos lr na stack (mesmo que o usemos)
 	ldr		r0, =RUNNING_PROCESS
 	ldr		r0, [r0]
 	sub		r2, r0, #1
@@ -293,7 +297,7 @@ SYSCALL_EXIT:
 
 	bl		FIND_NEXT_READY_CONTEXT
 
-	pop		{ lr }
+	pop		{lr}
 
 	cmp		r0, #0
 	blne	LOAD_CONTEXT
@@ -302,16 +306,15 @@ SYSCALL_EXIT:
 
 	b		SVC_END
 
-SYSCALL_EXIT_WAIT:
-	b	SYSCALL_EXIT_WAIT
+SYSCALL_EXIT_WAIT:								@ todos os processos foram finalizados.
+	b		SYSCALL_EXIT_WAIT
 
-@ TODO: Implementação atual utilizada para testes apenas
 SYSCALL_FORK:
 	msr		CPSR_c, #0xDF
 	msr		CPSR_c, #0x93
-	push	{ lr }
+	push	{lr}
 	bl		SAVE_CONTEXT
-	pop		{ lr }
+	pop		{lr}
 	mov		r0, #1
 	bl		LOAD_CONTEXT
 	msr		CPSR_c, #0xDF
@@ -320,7 +323,7 @@ SYSCALL_FORK:
 
 SYSCALL_WRITE:
 	ldr		r0, =UART_BASE
-	push		{r4}
+	push	{r4}
 	WRITE:
 		WAIT_TO_WRITE:
 			ldr		r3, [r0, #UART_USR1]		@ se o 13o bit de USR1 for 0
@@ -343,7 +346,7 @@ SYSCALL_GETPID:
 	b		SVC_END
 
 FIND_EMPTY_CONTEXT:
-	push	{ r1, r2, r3, lr }
+	push	{r1, r2, r3, lr}
 	ldr		r0, =PROCESS_CONTEXTS
 	ldr		r2, =PROCESS_8
 	mov		r3, #1
@@ -359,10 +362,10 @@ FIND_EMPTY_CONTEXT:
 		b		FIND_EMPTY_CHECK_CONTEXT
 FIND_EMPTY_CONTEXT_END:
 	mov		r0, r3
-	pop		{ r1, r2, r3, pc }
+	pop		{r1, r2, r3, pc}
 
 FIND_NEXT_READY_CONTEXT:
-	push	{ r1, r2, r3, r4, lr }
+	push	{r1, r2, r3, r4, lr}
 	ldr		r0, =RUNNING_PROCESS				@ Carrega número do processo em execução
 	ldr		r3, [r0]
 	sub		r0, r3, #1
@@ -390,13 +393,13 @@ FIND_NEXT_READY_CONTEXT:
 		b		FIND_NEXT_CHECK_CONTEXT
 FIND_NEXT_READY_CONTEXT_END:
 	mov		r0, r3
-	pop		{ r1, r2, r3, r4, pc }
+	pop		{r1, r2, r3, r4, pc}
 
 .data
-USER_TEXT:		.word	0x77802000				@ Início do programa de usuário
-RUNNING_PID:	.word	1						@ PID do processo em execução
-RUNNING_PROCESS:.word	1						@ Número do processo em execução (1-8)
-NEXT_PID:		.word	1						@ PID do próximo processo a ser iniciado
+USER_TEXT:			.word	0x77802000			@ Início do programa de usuário
+RUNNING_PID:		.word	1					@ PID do processo em execução
+RUNNING_PROCESS:	.word	1					@ Número do processo em execução (1-8)
+NEXT_PID:			.word	1					@ PID do próximo processo a ser iniciado
 
 @ Contexts
 @ Armazenamos 4 bytes para o pid, 52 bytes de r0-r12, 4 bytes do SP_usr,
