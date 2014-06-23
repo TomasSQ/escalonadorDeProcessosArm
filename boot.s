@@ -111,7 +111,7 @@ RESET_HANDLER:
 	mov		r0, #1
 	str		r0, [r1, #TZIC_INTCTRL]
 
-	ldr		r0, =UART_BASE
+	ldr		r0, =UART_BASE							@ configura o UART
 
 	mov		r1, #0x1
 	str		r1, [r0, #UART_UCR1]
