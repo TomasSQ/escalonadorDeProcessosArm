@@ -322,8 +322,8 @@ SYSCALL_FORK:
 	b		SVC_END
 
 SYSCALL_WRITE:
+	push	{r0-r4}
 	ldr		r0, =UART_BASE
-	push	{r4}
 	WRITE:
 		WAIT_TO_WRITE:
 			ldr		r3, [r0, #UART_USR1]		@ se o 13o bit de USR1 for 0
@@ -336,7 +336,7 @@ SYSCALL_WRITE:
 		str		r4, [r0, #UART_UTXD]			@ escrevemos na fila a ser transmitida
 		cmp		r2, #0							@ se ainda tem caracteres a serem escritos
 		bne		WRITE							@ continuamos o loop
-	pop		{r4}
+	pop		{r0-r4}
 	b		SVC_END
 
 SYSCALL_GETPID:
