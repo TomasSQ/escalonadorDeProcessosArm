@@ -193,7 +193,7 @@ SVC_END:
 @ Salva o contexto do processo que está rodando atualmente.
 SAVE_CONTEXT:
 	push	{r0, r1}							@ Empilha r0 e r1, pois iremos sujá-los
-	ldr		r0, =RUNNING_PROCESS				@ Carrega número do processo em execução
+	ldr		r0, =RUNNING_PID					@ Carrega número do processo em execução
 	ldr		r0, [r0]
 	sub		r0, r0, #1
 	mov		r1, #72
@@ -245,7 +245,7 @@ SAVE_CONTEXT:
 LOAD_CONTEXT:
 	push	{lr}								@ Empilha lr para podermos retornar
 
-	ldr		r1, =RUNNING_PROCESS				@ Grava número do processo como processo atual
+	ldr		r1, =RUNNING_PID					@ Grava número do processo como processo atual
 	str		r0, [r1]
 	sub		r0, r0, #1
 	mov		r1, #72
@@ -253,10 +253,6 @@ LOAD_CONTEXT:
 
 	ldr		r0, =PROCESS_CONTEXTS				@ Encontra endereço do contexto do processo
 	add		r0, r0, r1
-
-	ldr		r1, [r0]							@ Carrega PID do contexto 
-	ldr		r2, =RUNNING_PID					@ Grava PID como PID em execução
-	str		r1, [r2]
 
 	ldr		r1, [r0, #4]						@ Carrega SPSR do contexto
 	msr		SPSR, r1
@@ -286,7 +282,7 @@ LOAD_CONTEXT:
 
 SYSCALL_EXIT:
 	push	{lr}								@ Guardamos lr na stack (mesmo que o usemos)
-	ldr		r0, =RUNNING_PROCESS
+	ldr		r0, =RUNNING_PID
 	ldr		r0, [r0]
 	sub		r2, r0, #1
 	mov		r1, #72
@@ -368,7 +364,7 @@ FIND_EMPTY_CONTEXT_END:
 
 FIND_NEXT_READY_CONTEXT:
 	push	{r1, r2, r3, r4, lr}
-	ldr		r0, =RUNNING_PROCESS				@ Carrega número do processo em execução
+	ldr		r0, =RUNNING_PID				@ Carrega número do processo em execução
 	ldr		r3, [r0]
 	sub		r0, r3, #1
 	mov		r1, #72
@@ -400,7 +396,6 @@ FIND_NEXT_READY_CONTEXT_END:
 .data
 USER_TEXT:			.word	0x77802000			@ Início do programa de usuário
 RUNNING_PID:		.word	1					@ PID do processo em execução
-RUNNING_PROCESS:	.word	1					@ Número do processo em execução (1-8)
 NEXT_PID:			.word	1					@ PID do próximo processo a ser iniciado
 
 @ Contexts
