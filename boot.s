@@ -29,7 +29,7 @@ SET_TZIC:
 
 SET_GPT:
 	@ quantos ciclos serão executados até que se gere uma interrupção
-	.set GPT_CICLES,		0x32
+	.set GPT_CICLES,		0x1
 @Constantes para os enderecos do GPT
 	.set GPT_BASE,			0x53FA0000
 	.set GPT_CR,			0x0000
@@ -167,13 +167,17 @@ RESET_HANDLER:
 	movs	pc, r0
 
 IRQ_HANDLER:
-	push	{r0-r1}
+	push	{r0-r3}
+	mov		r3, lr								@ salva enderco de retorno a ser salvo no contexto como pc
+	mrs		r2, SPSR							@ Salva SPSR_svc para nao perde-lo
 	msr		CPSR_c, #0xD3						@ Modo supervisor, FIQ/IRQ desabilitados
 	ldr		r0, =GPT_BASE						@ zera flag, para nao tratar esta interrupcao novamente
 	mov		r1, #1
 	str		r1, [r0, #GPT_SR]
 
+	push	{r3}
 	bl		SAVE_CONTEXT						@ salva context do processo atual
+	pop		{r3}
 
 	bl		FIND_NEXT_READY_CONTEXT				@ encontra proximo processo a ser executado
 
@@ -190,10 +194,16 @@ IRQ_HANDLER:
 
 	ldr		lr, [r0, #8]						@ Carrega pc do contexto no lr, para trocarmos de processo
 
-	pop		{r0-r1}
+	msr		SPSR, r2
+
+	pop		{r0-r3}
 	movs	pc, lr
 
 SVC_HANDLER:
+	push	{r0-r3}
+	mrs		r0, CPSR
+	mrs		r1, SPSR
+	pop		{r0-r3}
 	cmp		r7, #1
 	beq		SYSCALL_EXIT
 
@@ -209,7 +219,7 @@ SVC_HANDLER:
 SVC_END:
 	movs	pc, lr								@ retorna ao modo de usuario, e retorna
 
-@ Salva o contexto do processo que está rodando atualmente.
+@ Salva o contexto do processo que está rodando atualmente, com o lr salvo na pilha.
 SAVE_CONTEXT:
 	push	{r0, r1}							@ Empilha r0 e r1, pois iremos sujá-los
 	ldr		r0, =RUNNING_PID					@ Carrega número do processo em execução
@@ -236,8 +246,6 @@ SAVE_CONTEXT:
 
 	str		sp, [r0, #16]						@ Salva sp_usr como sp no contexto
 
-	msr		CPSR_c, #0x93						@ Volta para o modo svc
-
 	str		r12, [r0, #20]						@ Salva r12 no contexto
 	str		r11, [r0, #24]						@ Salva r11 no contexto
 	str		r10, [r0, #28]						@ Salva r10 no contexto
@@ -257,6 +265,8 @@ SAVE_CONTEXT:
 	str		r2, [r0, #68]						@ Salva r2 como r0 no contexto
 
 	pop		{r0, r1}
+
+	msr		CPSR_c, #0xD3						@ Volta para o modo svc
 
 	mov		pc, lr								@ Retorna
 
@@ -310,7 +320,7 @@ SYSCALL_EXIT:
 	ldr		r2, =PROCESS_CONTEXTS				@ Encontra endereço do contexto do processo atual
 	add		r2, r2, r1
 
-	mov		r1, #1
+	mov		r1, #0
 	str		r1, [r2]
 
 	bl		FIND_NEXT_READY_CONTEXT
@@ -328,15 +338,23 @@ SYSCALL_EXIT_WAIT:								@ todos os processos foram finalizados.
 	b		SYSCALL_EXIT_WAIT
 
 SYSCALL_FORK:
+	push	{r0-r3}
+
 	msr		CPSR_c, #0xDF
 	msr		CPSR_c, #0x93
+
+	bl		FIND_EMPTY_CONTEXT
+	ldr		r1, =RUNNING_PID					@ Grava número do novo processo como processo atual
+	str		r0, [r1]
+
 	push	{lr}
-	bl		SAVE_CONTEXT
+	bl		SAVE_CONTEXT						@ salvara contexto do processo atual no novo
 	pop		{lr}
-	mov		r0, #1
-	bl		LOAD_CONTEXT
+
 	msr		CPSR_c, #0xDF
-	msr		CPSR_c, #0x93
+	msr		CPSR_c, #0x13
+
+	push	{r0-r3}
 	b		SVC_END
 
 SYSCALL_WRITE:
@@ -391,8 +409,13 @@ FIND_EMPTY_CONTEXT_END:
 @ Função auxiliar que encontra o contexto do próximo processo READY
 FIND_NEXT_READY_CONTEXT:
 	push	{r1, r2, r3, r4, lr}
-	ldr		r0, =RUNNING_PID					@ Carrega PID em execução
+
+	ldr		r0, =RUNNING_PID					@ Carrega número do processo em execução
 	ldr		r3, [r0]
+	cmp		r3, #8
+	moveq	r3, #1
+	addne	r3, r3, #1
+	
 	sub		r0, r3, #1
 	mov		r1, #72
 	mul		r1, r0, r1
@@ -402,8 +425,6 @@ FIND_NEXT_READY_CONTEXT:
 	mov		r4, r0								@ Armazena endereço em r0, pois iremos utilizá-lo
 
 	ldr		r2, =PROCESS_8						@ Carrega endereço do último contexto
-
-	mov		r3, #1								@ Inicializamos o contador de PID
 
 	FIND_NEXT_CHECK_CONTEXT:
 		cmp		r0, r2							@ Compara endereço do contexto atual com o último
