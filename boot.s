@@ -161,17 +161,36 @@ RESET_HANDLER:
 												@ Carrega endereço do início do programa de usuário
 	ldr		r0, =USER_TEXT
 	ldr		r0, [r0]
-	
+
 												@ Entra em modo de usuário com interrupções habilitadas
 	msr		SPSR, #0x10
 	movs	pc, r0
 
 IRQ_HANDLER:
+	push	{r0-r1}
+	msr		CPSR_c, #0xD3						@ Modo supervisor, FIQ/IRQ desabilitados
 	ldr		r0, =GPT_BASE						@ zera flag, para nao tratar esta interrupcao novamente
 	mov		r1, #1
 	str		r1, [r0, #GPT_SR]
 
-	sub		lr, lr, #4							@ retorna
+	bl		SAVE_CONTEXT						@ salva context do processo atual
+
+	bl		FIND_NEXT_READY_CONTEXT				@ encontra proximo processo a ser executado
+
+	push	{r0}
+	bl		LOAD_CONTEXT						@ carrega contexto do novo processo
+	pop		{r0}
+
+	sub		r0, r0, #1							@ r1 = offset do endereco onde esta o contexto ((r0 - 1) * 72)
+	mov		r0, #72
+	mul		r1, r0, r1
+
+	ldr		r0, =PROCESS_CONTEXTS				@ Encontra endereço do contexto do processo
+	add		r0, r0, r1
+
+	ldr		lr, [r0, #8]						@ Carrega pc do contexto no lr, para trocarmos de processo
+
+	pop		{r0-r1}
 	movs	pc, lr
 
 SVC_HANDLER:
@@ -212,7 +231,7 @@ SAVE_CONTEXT:
 	ldr		r1, [sp, #8]						@ Carrega lr_svc da stack e salva como pc no contexto
 	str		r1, [r0, #8]
 
-	msr		CPSR_c, #0xDF						@ Altera para modo system
+	msr		CPSR_c, #0xDF						@ Altera para modo system, sem iterrupcoes FIQ e IRQ
 	str		lr, [r0, #12]						@ Salva lr_usr como lr no contexto
 
 	str		sp, [r0, #16]						@ Salva sp_usr como sp no contexto
@@ -280,6 +299,7 @@ LOAD_CONTEXT:
 
 	pop		{pc}								@ Retorna
 
+@ finaliza o processo atual, e comeca a executar o proximo que esteja pronto
 SYSCALL_EXIT:
 	push	{lr}								@ Guardamos lr na stack (mesmo que o usemos)
 	ldr		r0, =RUNNING_PID
@@ -395,13 +415,13 @@ FIND_NEXT_READY_CONTEXT_END:
 
 .data
 USER_TEXT:			.word	0x77802000			@ Início do programa de usuário
-RUNNING_PID:		.word	1					@ PID do processo em execução
+RUNNING_PID:		.word	1					@ PID do processo em execução, o primeiro a ser executado sera o 1
 NEXT_PID:			.word	1					@ PID do próximo processo a ser iniciado
 
 @ Contexts
 @ Armazenamos 4 bytes para o pid, 52 bytes de r0-r12, 4 bytes do SP_usr,
 @ 4 bytes do LR_usr, 4 bytes do PC 4 bytes do SPSR
-@ Caso o pid esteja vazio, o processo ainda não foi iniciado ou já foi encerrado.
+@ Caso o pid esteja vazio (0), o processo ainda não foi iniciado ou já foi encerrado.
 PROCESS_CONTEXTS:
 	PROCESS_1:	.space	72
 	PROCESS_2:	.space	72

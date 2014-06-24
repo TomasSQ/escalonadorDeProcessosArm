@@ -6,8 +6,12 @@ _start:
 	mov		r2, #7
 	#bl		exit
 	bl		fork
-	#bl		write
-	b		_start
+	bl		write
+	bl		fork
+	bl		write
+while:
+	add		r0, r0, #1
+	b		while
 
 .data
 bla:	.asciz "alows\n\0"
