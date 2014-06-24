@@ -239,7 +239,9 @@ SAVE_CONTEXT:
 
 	mov		pc, lr								@ Retorna
 
-@ Carrega processo r0 para execução
+@ Carrega processo para execução.
+@ Entrada
+@ r0: PID
 LOAD_CONTEXT:
 	push	{lr}								@ Empilha lr para podermos retornar
 
@@ -380,8 +382,6 @@ FIND_NEXT_READY_CONTEXT:
 	mov		r4, r0								@ Armazena endereço em r0, pois iremos utilizá-lo
 
 	ldr		r2, =PROCESS_8						@ Carrega endereço do último contexto
-
-	mov		r3, #1								@ Inicializamos o contador de PID
 
 	FIND_NEXT_CHECK_CONTEXT:
 		cmp		r0, r2							@ Compara endereço do contexto atual com o último
