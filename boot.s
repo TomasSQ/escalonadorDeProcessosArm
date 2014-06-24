@@ -270,7 +270,9 @@ SAVE_CONTEXT:
 
 	mov		pc, lr								@ Retorna
 
-@ Carrega processo r0 para execução
+@ Carrega processo para execução.
+@ Entrada
+@ r0: PID
 LOAD_CONTEXT:
 	push	{lr}								@ Empilha lr para podermos retornar
 
