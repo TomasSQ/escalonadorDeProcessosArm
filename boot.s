@@ -341,28 +341,35 @@ SYSCALL_GETPID:
 
 	b		SVC_END
 
+@ Função auxiliar que encontra um contexto que não é utilizado por nenhum processo
 FIND_EMPTY_CONTEXT:
 	push	{r1, r2, r3, lr}
-	ldr		r0, =PROCESS_CONTEXTS
-	ldr		r2, =PROCESS_8
-	mov		r3, #1
+	ldr		r0, =PROCESS_CONTEXTS				@ Obtém endereço dos contextos
+	ldr		r2, =PROCESS_8						@ Obtém endereço do último contexto
+	mov		r3, #1								@ Inicializa contador de PID
 	FIND_EMPTY_CHECK_CONTEXT:
-		ldr		r1, [r0]
-		cmp		r1, #0
-		beq		FIND_EMPTY_CONTEXT_END
-		cmp		r0, r2
-		moveq	r3, #0
-		beq		FIND_EMPTY_CONTEXT_END
-		add		r0, r0, #72
-		add		r3, r3, #1
-		b		FIND_EMPTY_CHECK_CONTEXT
-FIND_EMPTY_CONTEXT_END:
-	mov		r0, r3
-	pop		{r1, r2, r3, pc}
+		ldr		r1, [r0]						@ Carrega PID do contexto
 
+		cmp		r1, #0							@ Compara PID com 0
+		beq		FIND_EMPTY_CONTEXT_END			@ Caso o PID seja igual a 0, 
+												@ então este contexto não está sendo utilizado,
+												@ então encerramos
+
+		cmp		r0, r2							@ Compara endereço deste contexto com o último
+		moveq	r3, #0							@ Caso sejam iguais, não há nenhum contexto disponível
+		beq		FIND_EMPTY_CONTEXT_END			@ Então, encerramos
+
+		add		r0, r0, #72						@ Passamos para o endereço do próximo contexto
+		add		r3, r3, #1						@ Incrementamos o contador
+		b		FIND_EMPTY_CHECK_CONTEXT		@ Realizamos o loop novamente
+FIND_EMPTY_CONTEXT_END:
+	mov		r0, r3								@ Passamos o PID para r0
+	pop		{r1, r2, r3, pc}					@ Retornamos
+
+@ Função auxiliar que encontra o contexto do próximo processo READY
 FIND_NEXT_READY_CONTEXT:
 	push	{r1, r2, r3, r4, lr}
-	ldr		r0, =RUNNING_PID				@ Carrega número do processo em execução
+	ldr		r0, =RUNNING_PID					@ Carrega PID em execução
 	ldr		r3, [r0]
 	sub		r0, r3, #1
 	mov		r1, #72
@@ -370,33 +377,36 @@ FIND_NEXT_READY_CONTEXT:
 
 	ldr		r0, =PROCESS_CONTEXTS				@ Encontra endereço do contexto do processo atual
 	add		r0, r0, r1
-	mov		r4, r0
-	add		r0, r0, #72
+	mov		r4, r0								@ Armazena endereço em r0, pois iremos utilizá-lo
 
-	ldr		r2, =PROCESS_8
+	ldr		r2, =PROCESS_8						@ Carrega endereço do último contexto
+
+	mov		r3, #1								@ Inicializamos o contador de PID
+
 	FIND_NEXT_CHECK_CONTEXT:
-		ldr		r1, [r0]
-		cmp		r0, r4
-		moveq	r3, #0
-		beq		FIND_NEXT_READY_CONTEXT_END
-		cmp		r1, #0
-		bne		FIND_NEXT_READY_CONTEXT_END
-		cmp		r0, r2
-		ldreq	r0, =PROCESS_CONTEXTS
-		addne	r0, r0, #72
+		cmp		r0, r2							@ Compara endereço do contexto atual com o último
+		ldreq	r0, =PROCESS_CONTEXTS			@ Caso sejam iguais, retorna ao primeiro contexto
 		moveq	r3, #1
+		addne	r0, r0, #72						@ Caso contrário, passa para o próximo contexto
 		addne	r3, r3, #1
-		b		FIND_NEXT_CHECK_CONTEXT
+
+		ldr		r1, [r0]						@ Verifica se este contexto possui PID
+		cmp		r1, #0							@ Caso possua, é o contexto de um processo READY ou RUNNING
+		beq		FIND_NEXT_CHECK_CONTEXT			@ Caso não possua, buscamos o próximo processo
+
+		cmp		r0, r4							@ Verifica se este é o contexto do processo inicial (RUNNING)
+		moveq	r3, #0							@ Caso seja, não encontramos nenhum contexto de processo READY
+
 FIND_NEXT_READY_CONTEXT_END:
-	mov		r0, r3
-	pop		{r1, r2, r3, r4, pc}
+	mov		r0, r3								@ Passamos o PID para r0
+	pop		{r1, r2, r3, r4, pc}				@ Retornamos
 
 .data
 USER_TEXT:			.word	0x77802000			@ Início do programa de usuário
 RUNNING_PID:		.word	1					@ PID do processo em execução
 NEXT_PID:			.word	1					@ PID do próximo processo a ser iniciado
 
-@ Contexts
+@ Contextos
 @ Armazenamos 4 bytes para o pid, 52 bytes de r0-r12, 4 bytes do SP_usr,
 @ 4 bytes do LR_usr, 4 bytes do PC 4 bytes do SPSR
 @ Caso o pid esteja vazio, o processo ainda não foi iniciado ou já foi encerrado.
