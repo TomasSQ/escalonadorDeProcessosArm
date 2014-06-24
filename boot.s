@@ -28,6 +28,8 @@ SET_TZIC:
 	.set TZIC_PRIORITY9,	0x424
 
 SET_GPT:
+	@ quantos ciclos serão executados até que se gere uma interrupção
+	.set GPT_CICLES,		0x32
 @Constantes para os enderecos do GPT
 	.set GPT_BASE,			0x53FA0000
 	.set GPT_CR,			0x0000
@@ -82,7 +84,7 @@ RESET_HANDLER:
 	mov		r1, #0
 	str		r1, [r0, #GPT_PR]
 
-	mov		r1, #100
+	mov		r1, #GPT_CICLES						@ configura o GPT para n ciclos
 	str		r1, [r0, #GPT_OCR1]
 
 	mov		r1, #1
