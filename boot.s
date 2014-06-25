@@ -348,6 +348,10 @@ SYSCALL_FORK:
 	push	{lr}
 	bl		FIND_EMPTY_CONTEXT					@ encontramos o primeiro espaco livre para se colocar um contexto novo
 	pop		{lr}
+
+	cmp		r0, #0								@ Verifica se encontramos um espaço livre
+	beq		SYSCALL_FORK_FAIL					@ Caso não tenhamos encontrado, exibimos um erro
+
 	ldr		r1, =RUNNING_PID					@ Grava número do novo processo como processo atual
 	str		r0, [r1]
 
@@ -383,6 +387,14 @@ SYSCALL_FORK:
 
 	pop		{r1, r2}
 	b		SVC_END
+
+SYSCALL_FORK_FAIL:
+	mov		r0, #0								@ Exibimos uma mensagem de erro
+	ldr		r1, =SYSCALL_FORK_FAIL_MSG
+	mov		r2, #41
+	mov		r7, #4
+	svc		0
+	b		SYSCALL_EXIT_WAIT					@ Saltamos para um loop infinito (FIM)
 
 @ escreve os r2 caracteres, comecando pelo aquele que esta no endereco r1, sem alterar qualquer registrador
 SYSCALL_WRITE:
@@ -480,6 +492,7 @@ FIND_NEXT_READY_CONTEXT_END:
 .data
 USER_TEXT:			.word	0x77802000			@ Início do programa de usuário
 RUNNING_PID:		.word	1					@ PID do processo em execução, o primeiro a ser executado sera o 1
+SYSCALL_FORK_FAIL_MSG:	.asciz "Numero maximo de processos atingido (8)\n\0"
 
 @ Contextos
 @ Armazenamos 4 bytes para o pid, 52 bytes de r0-r12, 4 bytes do SP_usr,
