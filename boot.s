@@ -17,6 +17,7 @@ interrupt_vector:
 	.set IRQ_STACK, 0x77704000
 	.set FIQ_STACK, 0x77705000
 	.set USR_STACK, 0x77706000
+	.set SVC_OFFSET, 0x200
 
 SET_TZIC:
 @ Constantes para os enderecos do TZIC
@@ -171,21 +172,18 @@ IRQ_HANDLER:
 
 	pop		{r0-r3}
 
-	push	{r0, lr}
-	bl		FIND_NEXT_READY_CONTEXT				@ encontra proximo processo a ser executado
-	cmp		r0, #0
-	beq		IRQ_HANDLER_END
-
-	pop		{r0, lr}
 	push	{lr}
 	bl		SAVE_CONTEXT						@ salva context do processo atual
 	pop		{lr}
 
-	bl		LOAD_CONTEXT					@ carrega contexto do novo processo
-	movs	pc, lr
+	push	{lr}
+	bl		FIND_NEXT_READY_CONTEXT				@ encontra proximo processo a ser executado
+	pop		{lr}
+
+	cmp		r0, #0
+	blne	LOAD_CONTEXT					@ carrega contexto do novo processo
 
 IRQ_HANDLER_END:
-	pop		{r0, lr}
 	movs	pc, lr
 
 SVC_HANDLER:
@@ -333,7 +331,7 @@ SYSCALL_EXIT_WAIT:								@ todos os processos foram finalizados.
 
 
 SYSCALL_FORK:
-	push	{r1}
+	push	{r1, r2}
 
 	ldr		r0, =RUNNING_PID
 	ldr		r0, [r0]
@@ -345,12 +343,11 @@ SYSCALL_FORK:
 	ldr		r1, =RUNNING_PID					@ Grava número do novo processo como processo atual
 	str		r0, [r1]
 
-	push	{lr}								@ Descobre sp do novo processo
-	ldr		r0, =RUNNING_PID					@ Carrega número do processo em execução
-	ldr		r0, [r0]
 	sub		r0, r0, #1
-	mov		r1, #0x100
+	mov		r1, #0x1000
 	mul		r1, r0, r1
+	ldr		r2, =USR_STACK
+	add		r1, r1, r2
 
 	mrs		r0, CPSR
 	msr		CPSR_c, #0xDF						@ Altera para modo system, sem iterrupcoes FIQ e IRQ
@@ -358,7 +355,9 @@ SYSCALL_FORK:
 	msr		CPSR_c, r0
 
 	ldr		r1, [sp, #4]
+	ldr		r2, [sp, #8]
 	mov		r0, #0
+	push	{lr}
 	bl		SAVE_CONTEXT						@ salvara contexto do processo atual no novo
 	pop		{lr}
 
@@ -366,7 +365,7 @@ SYSCALL_FORK:
 	ldr		r1, =RUNNING_PID					@ Retorna a "executar" o processo atual
 	str		r0, [r1]
 
-	pop		{r1}
+	pop		{r1, r2}
 	b		SVC_END
 
 SYSCALL_WRITE:
