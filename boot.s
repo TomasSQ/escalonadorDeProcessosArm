@@ -245,12 +245,14 @@ SAVE_CONTEXT:
 	str		r3, [r0, #56]						@ Salva r3 no contexto
 	str		r2, [r0, #60]						@ Salva r2 no contexto
 
-	pop		{r2, r3}							@ Desempilha valores iniciais de r0 e r1 em r2 e r3
 	push	{r2, r3}
+	ldr		r2, [sp, #8]
+	ldr		r3, [sp, #12]
 
 	str		r3, [r0, #64]						@ Salva r3 como r1 no contexto
 	str		r2, [r0, #68]						@ Salva r2 como r0 no contexto
 
+	pop		{r2, r3}
 	pop		{r0, r1}
 
 	mov		pc, lr								@ Retorna
