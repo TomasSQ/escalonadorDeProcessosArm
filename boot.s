@@ -30,7 +30,7 @@ SET_TZIC:
 
 SET_GPT:
 	@ quantos ciclos serão executados até que se gere uma interrupção
-	.set GPT_CICLES,		0x1
+	.set GPT_CICLES,		0x32
 @Constantes para os enderecos do GPT
 	.set GPT_BASE,			0x53FA0000
 	.set GPT_CR,			0x0000
