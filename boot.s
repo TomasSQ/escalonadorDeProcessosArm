@@ -187,10 +187,6 @@ IRQ_HANDLER_END:
 	movs	pc, lr
 
 SVC_HANDLER:
-	push	{r0-r3}
-	mrs		r0, CPSR
-	mrs		r1, SPSR
-	pop		{r0-r3}
 	cmp		r7, #1
 	beq		SYSCALL_EXIT
 

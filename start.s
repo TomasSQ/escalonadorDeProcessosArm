@@ -1,7 +1,7 @@
 .align 4
 .text
 _start:
-	b		main
+@	b		main
 	mov		r0, #0
 	ldr		r1, =bla
 	mov		r2, #7
@@ -14,7 +14,7 @@ while:
 	strb	r3, [r1]
 	mov		r2, #7
 	push	{r3}
-@	bl		write
+	bl		write
 	pop		{r3}
 	add		r3, r3, #1
 	mov		r2, r3
