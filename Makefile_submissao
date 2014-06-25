@@ -2,7 +2,7 @@ arm-as=arm-eabi-as
 arm-ld=arm-eabi-ld
 arm-cc=arm-eabi-gcc
 asflags=-g
-ldflags=-g -Ttext=0x77802000
+ldflags=-g --section-start=.iv=0x778005e0 -Ttext=0x77800700 -Tdata=0x77801800 -e 0x778005e0
 
 all: ra137748
 
