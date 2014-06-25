@@ -359,8 +359,10 @@ SYSCALL_FORK:
 
 	mrs		r0, CPSR
 	msr		CPSR_c, #0xDF						@ Altera para modo system, sem iterrupcoes FIQ e IRQ
+	mov		r2, sp
 	mov		sp, r1								@ salva sp do modo usuario
 	msr		CPSR_c, r0
+	push	{r2}
 
 	ldr		r1, [sp, #4]						@ recuperamos valores dos registradores, para salvar no contexto
 	ldr		r2, [sp, #8]
@@ -368,6 +370,12 @@ SYSCALL_FORK:
 	push	{lr}
 	bl		SAVE_CONTEXT						@ salvara contexto do processo atual no novo
 	pop		{lr}
+
+	pop		{r2}
+	mrs		r0, CPSR
+	msr		CPSR_c, #0xDF						@ Altera para modo system, sem iterrupcoes FIQ e IRQ
+	mov		sp, r2								@ salva sp do modo usuario
+	msr		CPSR_c, r0
 
 	pop		{r0}
 	ldr		r1, =RUNNING_PID					@ Retorna a "executar" o processo atual
